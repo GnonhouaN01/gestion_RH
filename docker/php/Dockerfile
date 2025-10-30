@@ -2,8 +2,8 @@
 FROM php:8.2-fpm
 
 
+# Install PHP extensions & tools
 
-# Installs
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -21,34 +21,62 @@ RUN apt-get update && apt-get install -y \
     procps \
     && docker-php-ext-install pdo_mysql zip intl mbstring bcmath sockets gd
 
-# Install composer
+ 
+#  Install Composer
+ 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Install Node (optional: useful for assets build)
+ 
+#  Install Node.js (optional for assets)
+ 
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
 
-# Create working dir
+ 
+#  Set working directory
+ 
 WORKDIR /var/www/html
 
-# Create user (optional)
+ 
+#  Create non-root user
+ 
+# Define UID/GID
+ARG UID=1000
+ARG GID=1000
+
+# Create group and user
 RUN groupadd -g ${GID} appuser && useradd -u ${UID} -g ${GID} -m appuser
 
-# Copy composer files separately (cache layer)
+ 
+#  Copy Composer files first (cache layer)
+ 
 COPY composer.json composer.lock* /var/www/html/
+
+# Install PHP dependencies (no autoloader yet)
 RUN composer install --no-scripts --no-autoloader --no-interaction --prefer-dist || true
 
-# Copy rest of the app
+ 
+#  Copy the rest of the application
+ 
 COPY . /var/www/html
 
-# Run composer properly (install)
+ 
+#  Run Composer properly
+ 
 RUN composer dump-autoload --optimize && composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
-# Permissions
+ 
+#  Set permissions
+ 
 RUN chown -R appuser:appuser /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Switch to non-root user
+ 
+#  Switch to non-root user
+ 
 USER appuser
 
+ 
+# 1 Expose port & start PHP-FPM
+ 
 EXPOSE 9000
 CMD ["php-fpm"]
