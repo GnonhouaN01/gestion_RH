@@ -1,0 +1,8 @@
+vendor
+node_modules
+npm-debug.log
+.env
+storage/*.key
+.idea
+.vscode
+.DS_Store
